@@ -44,7 +44,7 @@ export DATABASE_URL="$URL"
 
 # psycopg.connect() doesn't understand the "+psycopg" driver segment; normalize for the readiness probe
 READY_URL="$(printf "%s" "$DATABASE_URL" | sed 's/postgresql+psycopg:\/\//postgresql:\/\//')"
-
+export READY_URL    # <-- add this line
 echo ">>> waiting for database ..."
 python - <<'PY'
 import os, time
