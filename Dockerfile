@@ -16,5 +16,7 @@ RUN pip install -r requirements.txt
 # copy app last for better layer caching
 COPY . /app
 
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod 755 /app/entrypoint.sh
+
 # entrypoint will run migrations then start Granian
 CMD ["/app/entrypoint.sh"]
