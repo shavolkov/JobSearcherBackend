@@ -1,26 +1,41 @@
-from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
+# alembic/env.py
+import os, json, boto3
 from alembic import context
+from logging.config import fileConfig
+from sqlalchemy import engine_from_config, pool
 
 from app.db.models import Base
 target_metadata = Base.metadata
 
-import os
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+target_metadata = None 
 
 def get_url():
-    return os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/app")
+    url = os.getenv("DATABASE_URL")
+    if url:
+        return url
+
+    # 2) else build from Secrets Manager (name or ARN)
+    secret_id = os.getenv("DB_SECRET_ID") or os.getenv("DB_SECRET_ARN")
+    if secret_id:
+        region = os.getenv("AWS_REGION", "us-east-2")
+        sm = boto3.client("secretsmanager", region_name=region)
+        s = json.loads(sm.get_secret_value(SecretId=secret_id)["SecretString"])
+        db = s.get("dbname", "postgres")
+        return f"postgresql+psycopg://{s['username']}:{s['password']}@{s['host']}:{s['port']}/{db}?sslmode=require"
+
+    # 3) fallback to alembic.ini if nothing else given
+    return config.get_main_option("sqlalchemy.url")
+
 config.set_main_option("sqlalchemy.url", get_url())
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+
 
 # add your model's MetaData object here
 # for 'autogenerate' support
