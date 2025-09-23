@@ -1,37 +1,55 @@
 # alembic/env.py
-import os, json, boto3
+import os, json
 from alembic import context
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
+# optional: only import boto3 if we intend to use Secrets Manager
+try:
+    import boto3
+except Exception:
+    boto3 = None
+
 from app.db.models import Base
-target_metadata = Base.metadata
+target_metadata = Base.metadata   # <-- keep this; don't overwrite later
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
 config = context.config
-
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-target_metadata = None 
 
 def get_url():
+    # 1) explicit URL wins
     url = os.getenv("DATABASE_URL")
     if url:
         return url
 
-    # 2) else build from Secrets Manager (name or ARN)
-    secret_id = os.getenv("DB_SECRET_ID") or os.getenv("DB_SECRET_ARN")
-    if secret_id:
+    # 2) build from Secrets Manager + optional env fallbacks
+    sid = os.getenv("DB_SECRET_ID") or os.getenv("DB_SECRET_ARN")
+    if sid and boto3:
         region = os.getenv("AWS_REGION", "us-east-2")
         sm = boto3.client("secretsmanager", region_name=region)
-        s = json.loads(sm.get_secret_value(SecretId=secret_id)["SecretString"])
-        db = s.get("dbname", "postgres")
-        return f"postgresql+psycopg://{s['username']}:{s['password']}@{s['host']}:{s['port']}/{db}?sslmode=require"
+        s = json.loads(sm.get_secret_value(SecretId=sid)["SecretString"])
 
-    # 3) fallback to alembic.ini if nothing else given
+        user = s.get("username")
+        pwd  = s.get("password")
+
+        # RDS-managed secret might not include these; allow env overrides
+        host = s.get("host") or os.getenv("DB_HOST") or os.getenv("RDS_ENDPOINT")
+        port = str(s.get("port") or os.getenv("DB_PORT", "5432"))
+        db   = s.get("dbname") or os.getenv("DB_NAME", "postgres")
+
+        if not (user and pwd and host):
+            raise RuntimeError(
+                "DB creds incomplete. Provide DB_HOST/DB_PORT/DB_NAME envs or use a secret that includes host/port/dbname."
+            )
+
+        driver = os.getenv("DB_DRIVER", "psycopg")  # use 'psycopg2' if that’s your driver
+        return f"postgresql+{driver}://{user}:{pwd}@{host}:{port}/{db}?sslmode=require"
+
+    # 3) final fallback: whatever's in alembic.ini
     return config.get_main_option("sqlalchemy.url")
 
+# ensure SQLAlchemy sees the final URL
 config.set_main_option("sqlalchemy.url", get_url())
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
