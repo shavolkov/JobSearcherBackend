@@ -14,6 +14,11 @@ app.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
 def healthz():
      return {"status": "ok"}
 
+
+@app.get("/hello")
+def healthz():
+     return {"reply": "HEY DANIELLE"}
+
 @app.get("/readyz")
 def readyz():
     try:
