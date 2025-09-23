@@ -61,7 +61,7 @@ else:
 PY
 
 echo ">>> running alembic migrations ..."
-alembic upgrade head
+# alembic upgrade head
 
 echo ">>> launching server ..."
 # Pick ONE: granian or uvicorn (granian per your requirements)
