@@ -1,40 +1,26 @@
+# docker-compose.ec2.yml  (use this on your EC2 box)
+version: "3.9"
+
 services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 3s
-      timeout: 3s
-      retries: 20
-
   api:
-    build: 
-      context: .           # build from THIS folder (has Dockerfile)
-      dockerfile: Dockerfile
-    env_file: [.env]
-    depends_on:
-      db:
-        condition: service_healthy
+    # If you build on EC2, uncomment the next two lines and remove "image:"
+    # build: .
+    # image: week-api:latest
+    image: week-api:latest
+    container_name: api
+    restart: unless-stopped
     ports:
-      - "8000:8000"
-    # bind mount during active dev if you want live code in container
-    volumes:
-      - .:/app
-    # health-check the app via readiness endpoint
+      - "8000:8000"           # open 8000 in sg-api from your IP
+    environment:
+      # <<< set these for your environment >>>
+      AWS_REGION: us-east-2
+      # Prefer the secret NAME (portable) over the full ARN:
+      DB_SECRET_ID: week/app-db-credentials
+      # If your app expects DB_SECRET_ARN instead of DB_SECRET_ID, just rename the key.
+      # Or, if your app expects DATABASE_URL, see the alt run command below.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/readyz || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 10s
-
-volumes:
-  db_data:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    # If your image needs extra env (e.g., UVICORN workers), add them here.
