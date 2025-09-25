@@ -2,12 +2,15 @@ from fastapi import FastAPI, Response
 from sqlalchemy import text
 from app.db.session import engine
 from app.api.routers import jobs
+from app.api.routers import auth
 app = FastAPI()
 
 
 
 # Routers
 app.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
+
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 
 # Health endpoints
 @app.get("/healthz")

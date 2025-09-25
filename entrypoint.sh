@@ -5,6 +5,9 @@ echo ">>> entrypoint starting"
 
 # 1) Resolve DATABASE_URL (prod) or fall back to local dev
 # Order: explicit DATABASE_URL -> Secrets Manager -> PGDATABASE_URL -> dev default
+if [ -n "${DEPLOYING:-}"]; then
+  echo "TESTING ON LOCAL ENV"
+fi
 if [ -n "${DATABASE_URL:-}" ]; then
   URL="$DATABASE_URL"
 else
@@ -62,6 +65,10 @@ PY
 
 echo ">>> running alembic migrations ..."
 # alembic upgrade head
+if [ -n "${UPGRADE_HEAD:-}"]; then
+  echo "TESTING ON LOCAL ENV"
+fi
+
 
 echo ">>> launching server ..."
 # Pick ONE: granian or uvicorn (granian per your requirements)
