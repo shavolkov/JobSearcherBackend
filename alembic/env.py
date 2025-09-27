@@ -19,16 +19,17 @@ if config.config_file_name is not None:
 
 def get_url():
     # 1) explicit URL wins
-    return os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/postgres")
-    print("HERE1")
+    # return os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/postgres")
+    url = os.getenv("DATABASE_URL")
+
     if url:
-        print("HERE@")
+
         return url
 
     # 2) build from Secrets Manager + optional env fallbacks
     sid = os.getenv("DB_SECRET_ID") or os.getenv("DB_SECRET_ARN")
     if sid and boto3:
-        print("HERE4")
+
         region = os.getenv("AWS_REGION", "us-east-2")
         sm = boto3.client("secretsmanager", region_name=region)
         s = json.loads(sm.get_secret_value(SecretId=sid)["SecretString"])
@@ -50,7 +51,7 @@ def get_url():
         return f"postgresql+{driver}://{user}:{pwd}@{host}:{port}/{db}?sslmode=require"
 
     # 3) final fallback: whatever's in alembic.ini
-    print("HERE5")
+
     return config.get_main_option("sqlalchemy.url")
 
 # ensure SQLAlchemy sees the final URL
