@@ -15,7 +15,7 @@ def list_jobs(
     user: User = Depends(get_current_user),
 ):
     # simple read to prove the session works; returns empty until we migrate & insert
-    print("VARIFIED USER " + User)
+    print("VARIFIED USER " + User.__name__)
     return db.query(Job).limit(50).all()
 
 @router.post("/")
